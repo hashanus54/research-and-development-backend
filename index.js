@@ -5,17 +5,14 @@ const cors = require('cors');
 
 require('dotenv').config();
 const PORT = process.env.SERVER_PORT || 3000;
-const DB_CONNECTION_STRING = process.env.DB_CONNECTION_STRING;
 
 const UserRoute = require('./routes/UserRoute');
-const QuestionnaireRoute = require('./routes/QuestionnaireRoute');
-const NewsRoute = require('./routes/NewsRoute');
+
 
 const app = express();
-app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.urlencoded({extended: false}));
 app.use(bodyParser.json());
 app.use(cors());
-
 const UserController = require('./controllers/UserController');
 
 app.use((req, res, next) => {
@@ -23,7 +20,7 @@ app.use((req, res, next) => {
     next();
 });
 
-mongoose.connect(DB_CONNECTION_STRING).then(async () => {
+mongoose.connect('mongodb://127.0.0.1:27017/randd_db').then(async () => {
     try {
         await UserController.initializeAdmin();
     } catch (error) {
@@ -31,14 +28,14 @@ mongoose.connect(DB_CONNECTION_STRING).then(async () => {
     }
     app.listen(PORT, () => {
         console.log(`API started and running on port ${PORT}`);
-
     });
 }).catch(error => {
     console.error("Failed to connect to MongoDB:", error);
 });
 
+
+
 app.use('/api/v1/users', UserRoute);
-app.use('/api/v1/questionnaire', QuestionnaireRoute);
-app.use('/api/v1/news', NewsRoute);
+
 
 module.exports = app;
