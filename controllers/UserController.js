@@ -300,11 +300,84 @@ const resetPassword = async (req, res) => {
     }
 };
 
+const resendVerificationEmail = async (req, res) => {
+    try {
+        const { email } = req.body;
+        const user = await UserSchema.findOne({ email });
+        if (!user) {
+            return res.status(404).json({
+                status: false,
+                message: 'USER NOT FOUND'
+            });
+        }
+        if (user.isVerified) {
+            return res.status(400).json({
+                status: false,
+                message: 'Email already verified'
+            });
+        }
+
+        if (!user.verificationToken || !user.verificationTokenExpires) {
+            return res.status(400).json({
+                status: false,
+                message: 'No verification token found or token expired'
+            });
+        }
+
+        const currentTime = new Date();
+        if (user.verificationTokenExpires < currentTime) {
+            return res.status(400).json({
+                status: false,
+                message: 'Verification token has expired'
+            });
+        }
+
+        const verificationURL = `${process.env.FRONTEND_URL}/verify-email/${encodeURIComponent(user.verificationToken)}`;
+
+        const msg = {
+            to: user.email,
+            from: process.env.SENDGRID_FROM_EMAIL,  // SendGrid email address
+            subject: 'Email Verification Request',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2>Email Verification Request</h2>
+                    <p>Hello ${user.fullName},</p>
+                    <p>You requested to verify your email address. Click the button below to verify it:</p>
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="${verificationURL}" 
+                           style="background-color: #4CAF50; color: white; padding: 14px 20px; 
+                                  text-decoration: none; border-radius: 4px;">
+                            Verify Email
+                        </a>
+                    </div>
+                    <p>If you didn't request this, please ignore this email.</p>
+                    <p>This link will expire in 1 hour.</p>
+                    <p>Best regards,<br>Your App Team</p>
+                </div>
+            `
+        };
+        await sgMail.send(msg);
+        return res.status(200).json({
+            status: true,
+            message: 'VERIFICATION EMAIL SENT TO EMAIL'
+        });
+
+    } catch (error) {
+        console.error('Error in resend verification email:', error);
+        return res.status(500).json({
+            status: false,
+            message: 'INTERNAL SERVER ERROR'
+        });
+    }
+};
+
+
 module.exports = {
     initializeAdmin,
     signUp,
     verifyUser,
     signIn,
     forgotPassword,
-    resetPassword
+    resetPassword,
+    resendVerificationEmail
 }
