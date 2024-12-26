@@ -11,7 +11,7 @@ const initializeAdmin = async () => {
         const adminEmail = "admin@gmail.com";
         const adminPassword = "admin123";
 
-        const existingAdmin = await UserSchema.findOne({ email: adminEmail });
+        const existingAdmin = await UserSchema.findOne({email: adminEmail});
         if (existingAdmin) {
             return;
         }
@@ -44,20 +44,20 @@ const initializeAdmin = async () => {
 
 const signUp = async (req, res) => {
     try {
-        const { firstName, lastName, email, mobile, password, confirmPassword, dob } = req.body;
+        const {firstName, lastName, email, mobile, password, confirmPassword, dob} = req.body;
 
 
         if (password !== confirmPassword) {
-            return res.status(400).json({ message: "Passwords do not match" });
+            return res.status(400).json({message: "Passwords do not match"});
         }
 
 
-        const existingUser = await UserSchema.findOne({ email });
+        const existingUser = await UserSchema.findOne({email});
         if (existingUser) {
-            return res.status(400).json({ message: "User with this email already exists" });
+            return res.status(400).json({message: "User with this email already exists"});
         }
 
- 
+
         const hashedPassword = await bcrypt.hash(password, 10);
 
 
@@ -70,7 +70,7 @@ const signUp = async (req, res) => {
             confirmPassword: hashedPassword,
             dob,
             avatar: "",
-            activeState: false, 
+            activeState: false,
             verificationToken: "",
             isVerified: false,
             passwordResetToken: null,
@@ -78,14 +78,14 @@ const signUp = async (req, res) => {
             role: "USER"
         });
 
-     
+
         const verificationToken = crypto.randomBytes(32).toString('hex');
         newUser.verificationToken = verificationToken;
 
-    
+
         await newUser.save();
 
-    
+
         const verificationURL = `${process.env.FRONTEND_URL}/verify-email/${encodeURIComponent(verificationToken)}`;
         const msg = {
             to: newUser.email,
@@ -118,15 +118,15 @@ const signUp = async (req, res) => {
 
     } catch (error) {
         console.error('Error during signup:', error);
-        return res.status(500).json({ message: 'Server error, please try again later' });
+        return res.status(500).json({message: 'Server error, please try again later'});
     }
 };
 
 const verifyUser = async (req, res) => {
     try {
-        const { verificationToken } = req.params;
+        const {verificationToken} = req.params;
 
-        const user = await UserSchema.findOne({ verificationToken });
+        const user = await UserSchema.findOne({verificationToken});
         if (!user) {
             return res.status(404).json({
                 status: false,
@@ -163,37 +163,41 @@ const verifyUser = async (req, res) => {
 
 const signIn = async (req, res) => {
     try {
-        const selectedUser = await UserSchema.findOne({ email: req.body.email });
+        const selectedUser = await UserSchema.findOne({email: req.body.email});
         if (!selectedUser) {
-            return res.status(404).json({ status: false, message: 'USERNAME NOT FOUND' });
+            return res.status(404).json({status: false, message: 'USERNAME NOT FOUND'});
         }
         if (!selectedUser.isVerified) {
-            return res.status(401).json({ status: false, message: 'USER NOT VERIFIED' });
+            return res.status(401).json({status: false, message: 'USER NOT VERIFIED'});
         }
         const isPasswordValid = await bcrypt.compare(req.body.password, selectedUser.password);
         if (!isPasswordValid) {
-            return res.status(401).json({ status: false, message: "INCORRECT PASSWORD" });
+            return res.status(401).json({status: false, message: "INCORRECT PASSWORD"});
         }
         selectedUser.loginTime = new Date().toISOString();
         await selectedUser.save();
 
         const role = selectedUser.role ? 'ADMIN' : 'USER';
 
-        const token = jwt.sign({ 'email': selectedUser.email, role }, process.env.SECRET_KEY, { expiresIn: 3600 });
+        const token = jwt.sign({
+            'email': selectedUser.email,
+            role,
+            id: selectedUser._id
+        }, process.env.SECRET_KEY, {expiresIn: 3600});
         res.setHeader('Authorization', `Bearer ${token}`);
 
-        return res.status(200).json({ status: true, message: "USER LOGIN SUCCESSFULLY", token });
+        return res.status(200).json({status: true, message: "USER LOGIN SUCCESSFULLY", token});
 
     } catch (error) {
         console.error(error);
-        return res.status(500).json({ message: 'Internal server error' });
+        return res.status(500).json({message: 'Internal server error'});
     }
 }
 
 const forgotPassword = async (req, res) => {
     try {
-        const { email } = req.body;
-        const user = await UserSchema.findOne({ email });
+        const {email} = req.body;
+        const user = await UserSchema.findOne({email});
         if (!user) {
             return res.status(404).json({
                 status: false,
@@ -248,14 +252,14 @@ const forgotPassword = async (req, res) => {
 
 const resetPassword = async (req, res) => {
     try {
-        const { token, newPassword } = req.body;
+        const {token, newPassword} = req.body;
         const passwordResetToken = crypto
             .createHash('sha256')
             .update(token)
             .digest('hex');
         const user = await UserSchema.findOne({
             passwordResetToken,
-            passwordResetTokenExpires: { $gt: Date.now() }
+            passwordResetTokenExpires: {$gt: Date.now()}
         });
         if (!user) {
             return res.status(400).json({

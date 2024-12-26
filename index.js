@@ -7,6 +7,7 @@ require('dotenv').config();
 const PORT = process.env.SERVER_PORT || 3000;
 
 const UserRoute = require('./routes/UserRoute');
+const QuestionnaireRoute = require('./routes/QuestionnaireRoute');
 
 
 const app = express();
@@ -36,6 +37,7 @@ mongoose.connect('mongodb://127.0.0.1:27017/randd_db').then(async () => {
 
 
 app.use('/api/v1/users', UserRoute);
+app.use('/api/v1/questionnaire', QuestionnaireRoute);
 
 
 module.exports = app;
