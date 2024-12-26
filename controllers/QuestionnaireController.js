@@ -1,4 +1,5 @@
 const Questionnaire = require('../schemas/QuestionnaireSchema');
+const User = require('../schemas/UserSchema');
 const ENUMS = require('../schemas/enums/QuestionnaireEnums');
 
 const createQuestionnaire = async (req, res) => {
@@ -14,32 +15,32 @@ const createQuestionnaire = async (req, res) => {
         targetedMarket: req.body.targetedMarket || ENUMS.TARGETED_MARKET[0],
         commercialisationTimeline: req.body.commercialisationTimeline || ENUMS.COMMERCIALISATION_TIMELINE[0],
         expectedInvestment: req.body.expectedInvestment || ENUMS.EXPECTED_INVESTMENT[0],
-        investmentType: req.body.investmentType || "Default Investment Type",
+        investmentType: req.body.investmentType ,
         totalRevenue: req.body.totalRevenue || ENUMS.TOTAL_REVENUE[0],
         regulatoryApproval: req.body.regulatoryApproval || ENUMS.REGULATORY_APPROVAL[0],
-        regulatoryApprovalDescription: req.body.regulatoryApprovalDescription || "",
+        regulatoryApprovalDescription: req.body.regulatoryApprovalDescription ,
         landRequirement: req.body.landRequirement || ENUMS.LAND_REQUIREMENT[0],
-        landRequirementDescription: req.body.landRequirementDescription || "",
-        investorExperience: req.body.investorExperience || "",
-        expectedOtherFacilities: req.body.expectedOtherFacilities || "",
-        applicationUrl: req.body.applicationUrl || [],
-        researchTitle: req.body.researchTitle || "Default Research Title",
-        researchGaps: req.body.researchGaps || "Default Research Gaps",
-        researchObjectives: req.body.researchObjectives || "Default Research Objectives",
-        significanceForCountry: req.body.significanceForCountry || "Default Significance",
-        novelty: req.body.novelty || "Default Novelty",
+        landRequirementDescription: req.body.landRequirementDescription ,
+        investorExperience: req.body.investorExperience ,
+        expectedOtherFacilities: req.body.expectedOtherFacilities ,
+        applicationUrl: req.body.applicationUrl,
+        researchTitle: req.body.researchTitle ,
+        researchGaps: req.body.researchGaps ,
+        researchObjectives: req.body.researchObjectives,
+        significanceForCountry: req.body.significanceForCountry ,
+        novelty: req.body.novelty ,
         durationInMonths: req.body.durationInMonths || 0,
-        conductedPlaces: req.body.conductedPlaces || "Default Places",
-        marketDemand: req.body.marketDemand || "Default Market Demand",
-        currentOutputs: req.body.currentOutputs || "Default Outputs",
-        expectedImpact: req.body.expectedImpact || "Default Impact",
-        researchPlanUrl: req.body.researchPlanUrl || [],
+        conductedPlaces: req.body.conductedPlaces,
+        marketDemand: req.body.marketDemand ,
+        currentOutputs: req.body.currentOutputs,
+        expectedImpact: req.body.expectedImpact ,
+        researchPlanUrl: req.body.researchPlanUrl,
         totalCost: req.body.totalCost || 0,
-        requiredAssistantFromGov: req.body.requiredAssistantFromGov || "Default Assistance",
-        resourcesAndCollaborations: req.body.resourcesAndCollaborations || "Default Resources",
-        supportingDocumentsUrl: req.body.supportingDocumentsUrl || [],
-        risksAndAssumptions: req.body.risksAndAssumptions || "Default Risks",
-        otherDocumentUrl: req.body.otherDocumentUrl || [],
+        requiredAssistantFromGov: req.body.requiredAssistantFromGov ,
+        resourcesAndCollaborations: req.body.resourcesAndCollaborations ,
+        supportingDocumentsUrl: req.body.supportingDocumentsUrl,
+        risksAndAssumptions: req.body.risksAndAssumptions,
+        otherDocumentUrl: req.body.otherDocumentUrl,
         approvalStatus: req.body.approvalStatus || ENUMS.APPROVAL_STATUS[0],
         approvalNote: req.body.approvalNote || null,
 
@@ -71,32 +72,32 @@ const updateQuestionnaire = (req, res) => {
             targetedMarket: req.body.targetedMarket || ENUMS.TARGETED_MARKET[0],
             commercialisationTimeline: req.body.commercialisationTimeline || ENUMS.COMMERCIALISATION_TIMELINE[0],
             expectedInvestment: req.body.expectedInvestment || ENUMS.EXPECTED_INVESTMENT[0],
-            investmentType: req.body.investmentType || "Default Investment Type",
+            investmentType: req.body.investmentType ,
             totalRevenue: req.body.totalRevenue || ENUMS.TOTAL_REVENUE[0],
             regulatoryApproval: req.body.regulatoryApproval || ENUMS.REGULATORY_APPROVAL[0],
-            regulatoryApprovalDescription: req.body.regulatoryApprovalDescription || "",
+            regulatoryApprovalDescription: req.body.regulatoryApprovalDescription ,
             landRequirement: req.body.landRequirement || ENUMS.LAND_REQUIREMENT[0],
-            landRequirementDescription: req.body.landRequirementDescription || "",
-            investorExperience: req.body.investorExperience || "",
-            expectedOtherFacilities: req.body.expectedOtherFacilities || "",
-            applicationUrl: req.body.applicationUrl || [],
-            researchTitle: req.body.researchTitle || "Default Research Title",
-            researchGaps: req.body.researchGaps || "Default Research Gaps",
-            researchObjectives: req.body.researchObjectives || "Default Research Objectives",
-            significanceForCountry: req.body.significanceForCountry || "Default Significance",
-            novelty: req.body.novelty || "Default Novelty",
+            landRequirementDescription: req.body.landRequirementDescription ,
+            investorExperience: req.body.investorExperience ,
+            expectedOtherFacilities: req.body.expectedOtherFacilities ,
+            applicationUrl: req.body.applicationUrl,
+            researchTitle: req.body.researchTitle ,
+            researchGaps: req.body.researchGaps ,
+            researchObjectives: req.body.researchObjectives,
+            significanceForCountry: req.body.significanceForCountry ,
+            novelty: req.body.novelty ,
             durationInMonths: req.body.durationInMonths || 0,
-            conductedPlaces: req.body.conductedPlaces || "Default Places",
-            marketDemand: req.body.marketDemand || "Default Market Demand",
-            currentOutputs: req.body.currentOutputs || "Default Outputs",
-            expectedImpact: req.body.expectedImpact || "Default Impact",
-            researchPlanUrl: req.body.researchPlanUrl || [],
+            conductedPlaces: req.body.conductedPlaces,
+            marketDemand: req.body.marketDemand ,
+            currentOutputs: req.body.currentOutputs,
+            expectedImpact: req.body.expectedImpact ,
+            researchPlanUrl: req.body.researchPlanUrl,
             totalCost: req.body.totalCost || 0,
-            requiredAssistantFromGov: req.body.requiredAssistantFromGov || "Default Assistance",
-            resourcesAndCollaborations: req.body.resourcesAndCollaborations || "Default Resources",
-            supportingDocumentsUrl: req.body.supportingDocumentsUrl || [],
-            risksAndAssumptions: req.body.risksAndAssumptions || "Default Risks",
-            otherDocumentUrl: req.body.otherDocumentUrl || [],
+            requiredAssistantFromGov: req.body.requiredAssistantFromGov ,
+            resourcesAndCollaborations: req.body.resourcesAndCollaborations ,
+            supportingDocumentsUrl: req.body.supportingDocumentsUrl,
+            risksAndAssumptions: req.body.risksAndAssumptions,
+            otherDocumentUrl: req.body.otherDocumentUrl,
             approvalStatus: req.body.approvalStatus || ENUMS.APPROVAL_STATUS[0],
             approvalNote: req.body.approvalNote || null,
         }
@@ -141,17 +142,37 @@ const updateQuestionnaireStatus = (req, res) => {
         });
 };
 
-
 const getAllQuestionnaires = async (req, res) => {
-    Questionnaire.find().then(result => {
-        res.status(200).json({
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit) || 10);
+    const skip = (page - 1) * limit;
+
+    try {
+        const result = await Questionnaire.find()
+            .skip(skip)
+            .limit(limit);
+
+        const totalCount = await Questionnaire.countDocuments();
+        const totalPages = Math.ceil(totalCount / limit);
+
+        return res.status(200).json({
             success: true,
             message: 'All Questionnaires',
-            data: result
+            data: result,
+            pagination: {
+                currentPage: page,
+                totalPages: totalPages,
+                totalItems: totalCount,
+                itemsPerPage: limit
+            }
         });
-    }).catch((error) => {
-        res.status(500).json(error);
-    });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: 'Error fetching questionnaires',
+            error: error.message,
+        });
+    }
 };
 
 const getQuestionnaireById = async (req, res) => {
@@ -176,39 +197,120 @@ const getQuestionnaireById = async (req, res) => {
 };
 
 const getQuestionnaireByApprovalStatus = async (req, res) => {
-    const {status} = req.params;
+    let approvalStatus = req.params.approvalStatus;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit) || 10);
+    const skip = (page - 1) * limit;
 
-    Questionnaire.find({approvalStatus: status}).then(result => {
-        if (result == null) {
-            res.status(200).json({
+    try {
+        const result = await Questionnaire.find({ approvalStatus: approvalStatus })
+            .skip(skip)
+            .limit(limit);
+        const totalCount = await Questionnaire.countDocuments({ approvalStatus: approvalStatus });
+        const totalPages = Math.ceil(totalCount / limit);
+        if (!result || result.length === 0) {
+            return res.status(200).json({
                 success: false,
                 message: 'Questionnaires Not Found',
             });
         } else {
-            res.status(200).json({
+            return res.status(200).json({
                 success: true,
-                message: 'Questionnaires',
-                data: result
+                message: 'Questionnaires found',
+                data: result,
+                pagination: {
+                    currentPage: page,
+                    totalPages: totalPages,
+                    totalItems: totalCount,
+                    itemsPerPage: limit
+                }
             });
         }
-    }).catch((error) => {
-        res.status(500).json(error);
-    })
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: 'Error fetching questionnaires',
+            error: error.message,
+        });
+    }
 };
 
 const getQuestionnairesByUser = async (req, res) => {
     const userId = req.user.id;
-    console.log(userId)
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit) || 10);
+    const skip = (page - 1) * limit;
 
-    Questionnaire.find({user: userId}).then(result => {
-        res.status(200).json({
+    try {
+        const result = await Questionnaire.find({ user: userId })
+            .skip(skip)
+            .limit(limit);
+
+        const totalCount = await Questionnaire.countDocuments({ user: userId });
+        const totalPages = Math.ceil(totalCount / limit);
+
+        return res.status(200).json({
             success: true,
             message: 'Questionnaires By User',
-            data: result
+            data: result,
+            pagination: {
+                currentPage: page,
+                totalPages: totalPages,
+                totalItems: totalCount,
+                itemsPerPage: limit
+            }
         });
-    }).catch((error) => {
-        res.status(500).json(error);
-    })
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: 'Error fetching questionnaires by user',
+            error: error.message,
+        });
+    }
+};
+
+const getQuestionnairesByEmail = async (req, res) => {
+    const userEmail = req.query.email;
+    console.log(userEmail);
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit) || 10);
+    const skip = (page - 1) * limit;
+
+    try {
+        const user = await User.findOne({ email: userEmail });
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found',
+            });
+        }
+
+        const result = await Questionnaire.find({ user: user._id })
+            .skip(skip)
+            .limit(limit);
+
+        const totalCount = await Questionnaire.countDocuments({ user: user._id });
+        const totalPages = Math.ceil(totalCount / limit);
+
+        return res.status(200).json({
+            success: true,
+            message: 'Questionnaires By Email',
+            data: result,
+            pagination: {
+                currentPage: page,
+                totalPages: totalPages,
+                totalItems: totalCount,
+                itemsPerPage: limit
+            }
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: 'Error fetching questionnaires by email',
+            error: error.message,
+        });
+    }
 };
 
 const deleteQuestionnaire = async (req, res) => {
@@ -239,5 +341,6 @@ module.exports = {
     getQuestionnaireById,
     getQuestionnaireByApprovalStatus,
     getQuestionnairesByUser,
+    getQuestionnairesByEmail,
     deleteQuestionnaire
 }
