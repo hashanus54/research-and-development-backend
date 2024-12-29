@@ -3,6 +3,7 @@ const UserController = require('../controllers/UserController');
 const router = express.Router();
 
 router.post('/sign-up', UserController.signUp);
+router.post('/sign-up-with-message', UserController.signUpWithMessage);
 router.post('/sign-in', UserController.signIn);
 router.post('/forgot-password', UserController.forgotPassword);
 router.post('/reset-password', UserController.resetPassword);
