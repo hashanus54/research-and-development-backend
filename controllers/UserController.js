@@ -3,7 +3,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const {createSMSClient, createSession, sendMessage, closeSession} = require('../utils/SMSUtil');
-const {sendPasswordResetEmail, sendPasswordResetConfirmationEmail,sendOTPEmail} = require('../utils/EmailUtil');
+const {sendPasswordResetEmail, sendPasswordResetConfirmationEmail, sendOTPEmail} = require('../utils/EmailUtil');
 
 
 const appName = process.env.APPLICATION_NAME;
@@ -21,9 +21,6 @@ const initializeAdmin = async () => {
             return;
         }
         const hashedPassword = await bcrypt.hash(adminPassword, 10);
-        const otp = Math.floor(100000 + Math.random() * 900000);
-        const otpExpiry = new Date(Date.now() + 10 * 60 * 1000)
-
         const adminUser = new UserSchema({
             firstName: adminFirstName,
             lastName: adminLastName,
@@ -37,9 +34,9 @@ const initializeAdmin = async () => {
             isVerified: true,
             passwordResetToken: null,
             passwordResetTokenExpires: null,
-            role: "ADMIN",
-            otp,
-            otpExpiry,
+            role: "SUPER_ADMIN",
+            otp: null,
+            otpExpiry: null,
             isPhoneVerified: true,
             isEmailVerified: true
         });
@@ -67,7 +64,7 @@ const signIn = async (req, res) => {
         selectedUser.loginTime = new Date().toISOString();
         await selectedUser.save();
 
-        const role = selectedUser.role === 'ADMIN' ? 'ADMIN' : 'USER';
+        const role = selectedUser.role;
 
         const token = jwt.sign({
             'email': selectedUser.email,
@@ -86,7 +83,7 @@ const signIn = async (req, res) => {
 
 const signUp = async (req, res) => {
     try {
-        const { firstName, lastName, email, mobile, password, confirmPassword, dob } = req.body;
+        const {firstName, lastName, email, mobile, password, confirmPassword, dob} = req.body;
         const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
         if (!passwordRegex.test(password)) {
             return res.status(400).json({
@@ -94,14 +91,14 @@ const signUp = async (req, res) => {
             });
         }
         if (password !== confirmPassword) {
-            return res.status(400).json({ message: "Passwords do not match." });
+            return res.status(400).json({message: "Passwords do not match."});
         }
-        const existingUser = await UserSchema.findOne({ email });
+        const existingUser = await UserSchema.findOne({email});
         if (existingUser) {
-            return res.status(400).json({ message: "User with this email already exists." });
+            return res.status(400).json({message: "User with this email already exists."});
         }
         if (!mobile || !/^\d{10,15}$/.test(mobile)) {
-            return res.status(400).json({ message: 'A valid mobile number is required.' });
+            return res.status(400).json({message: 'A valid mobile number is required.'});
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -160,7 +157,7 @@ const signUp = async (req, res) => {
 
     } catch (error) {
         console.error('Error during signup:', error);
-        return res.status(500).json({ message: 'Server error, please try again later.' });
+        return res.status(500).json({message: 'Server error, please try again later.'});
     }
 };
 
@@ -331,6 +328,205 @@ const resetPassword = async (req, res) => {
     }
 };
 
+
+//===================================== Director Endpoints ==================================================
+
+
+const createDirector = async (req, res) => {
+    try {
+        const {firstName, lastName, email, mobile, password, confirmPassword, dob} = req.body;
+
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+        if (!passwordRegex.test(password)) {
+            return res.status(400).json({
+                message: "Password must be at least 8 characters long and include uppercase, lowercase, a number, and a special character."
+            });
+        }
+        if (password !== confirmPassword) {
+            return res.status(400).json({message: "Passwords do not match."});
+        }
+        const existingUser = await UserSchema.findOne({email});
+        if (existingUser) {
+            return res.status(400).json({message: "User with this email already exists."});
+        }
+        if (!mobile || !/^\d{10,15}$/.test(mobile)) {
+            return res.status(400).json({message: 'A valid mobile number is required.'});
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const tempDirectorUser = new UserSchema({
+            firstName,
+            lastName,
+            email,
+            mobile,
+            password: hashedPassword,
+            confirmPassword: hashedPassword,
+            dob,
+            avatar: "",
+            activeState: true,
+            isVerified: true,
+            passwordResetToken: null,
+            passwordResetTokenExpires: null,
+            role: "DIRECTOR",
+            otp: null,
+            otpExpiry: null,
+            isPhoneVerified: true,
+            isEmailVerified: true
+        });
+
+        await tempDirectorUser.save();
+        return res.status(201).json({
+            status: true,
+            message: 'Director Created Successfully'
+        });
+
+    } catch (error) {
+        return res.status(500).json({message: 'Server error, please try again later.'});
+    }
+};
+
+const updateUser = (req, res) => {
+    const userId = req.params.id;
+    const updates = req.body;
+    UserSchema.findOne({_id: userId})
+        .then(user => {
+            if (!user) {
+                return res.status(404).json({status: false, message: 'User not found'});
+            }
+            if (updates.password) {
+                const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+                if (!passwordRegex.test(updates.password)) {
+                    return res.status(400).json({
+                        status: false,
+                        message: "Password must be at least 8 characters long and include uppercase, lowercase, a number, and a special character."
+                    });
+                }
+                if (updates.password !== updates.confirmPassword) {
+                    return res.status(400).json({status: false, message: "Passwords do not match."});
+                }
+                updates.password = bcrypt.hashSync(updates.password, 10);
+            }
+
+            if (updates.email && updates.email !== user.email) {
+                return UserSchema.findOne({email: updates.email})
+                    .then(existingUser => {
+                        if (existingUser) {
+                            return res.status(400).json({
+                                status: false,
+                                message: "User with this email already exists."
+                            });
+                        }
+                    });
+            }
+
+            if (updates.mobile && !/^\d{10,15}$/.test(updates.mobile)) {
+                return res.status(400).json({status: false, message: 'A valid mobile number is required.'});
+            }
+
+            UserSchema.updateOne({_id: userId}, {$set: updates})
+                .then(result => {
+                    if (result.modifiedCount > 0) {
+                        return res.status(200).json({
+                            status: true,
+                            message: 'USER UPDATED SUCCESSFULLY',
+                        });
+                    } else {
+                        return res.status(200).json({status: false, message: 'NO CHANGES MADE'});
+                    }
+                })
+                .catch(error => {
+                    res.status(500).json({status: false, message: 'SERVER ERROR', error: error.message});
+                });
+        })
+        .catch(error => {
+            res.status(500).json({status: false, message: 'SERVER ERROR', error: error.message});
+        });
+};
+
+const updateUserRole = (req, res) => {
+
+    const userId = req.params.id;
+    const {role} = req.body;
+    const requestUserRole = req.user.role;
+
+    if (requestUserRole !== 'SUPER_ADMIN') {
+        return res.status(403).json({status: false, message: 'Permission denied. Only SuperAdmin can update roles.'});
+    }
+
+    const validRoles = ['USER', 'ADMIN', 'DIRECTOR'];
+    if (!validRoles.includes(role)) {
+        return res.status(400).json({status: false, message: 'Invalid role provided'});
+    }
+
+    UserSchema.findOne({_id: userId})
+        .then(user => {
+            if (!user) {
+                return res.status(404).json({status: false, message: 'User not found'});
+            }
+            UserSchema.updateOne({_id: userId}, {$set: {role: role}})
+                .then(result => {
+                    if (result.modifiedCount > 0) {
+                        return res.status(200).json({
+                            status: true,
+                            message: 'USER ROLE UPDATED SUCCESSFULLY',
+                        });
+                    } else {
+                        return res.status(200).json({status: false, message: 'NO CHANGES MADE'});
+                    }
+                })
+                .catch(error => {
+                    res.status(500).json({status: false, message: 'SERVER ERROR', error: error.message});
+                });
+        })
+        .catch(error => {
+            res.status(500).json({status: false, message: 'SERVER ERROR', error: error.message});
+        });
+};
+
+const deleteUser = (req, res) => {
+
+    const userId = req.params.id;
+    const requestUserRole = req.user.role;
+
+    if (requestUserRole !== 'SUPER_ADMIN') {
+        return res.status(403).json({status: false, message: 'Permission denied. Only SuperAdmin can delete users.'});
+    }
+
+    UserSchema.findOne({_id: userId})
+        .then(user => {
+            if (!user) {
+                return res.status(404).json({status: false, message: 'User not found'});
+            }
+
+            UserSchema.updateOne({_id: userId}, {
+                $set: {
+                    activeState: false,
+                    isVerified: false,
+                    isPhoneVerified: false,
+                    isEmailVerified: false,
+
+                }
+            })
+                .then(result => {
+                    if (result.modifiedCount > 0) {
+                        return res.status(200).json({
+                            status: true,
+                            message: 'USER DELETED SUCCESSFULLY',
+                        });
+                    } else {
+                        return res.status(200).json({status: false, message: 'NO CHANGES MADE'});
+                    }
+                })
+                .catch(error => {
+                    res.status(500).json({status: false, message: 'SERVER ERROR', error: error.message});
+                });
+        })
+        .catch(error => {
+            res.status(500).json({status: false, message: 'SERVER ERROR', error: error.message});
+        });
+};
+
+
 module.exports = {
     initializeAdmin,
     signUp,
@@ -338,5 +534,9 @@ module.exports = {
     forgotPassword,
     resetPassword,
     verifyUserWithOtp,
-    resendOTP
+    resendOTP,
+    createDirector,
+    updateUser,
+    updateUserRole,
+    deleteUser
 };

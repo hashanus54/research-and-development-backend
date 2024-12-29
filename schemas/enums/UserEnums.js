@@ -1,3 +1,3 @@
 module.exports = {
-    ROLES: ['ADMIN', 'USER', 'DIRECTOR'],
+    ROLES: ['SUPER_ADMIN', 'ADMIN', 'USER', 'DIRECTOR'],
 };
