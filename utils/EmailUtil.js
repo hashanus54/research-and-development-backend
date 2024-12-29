@@ -29,7 +29,7 @@ const sendVerificationEmail = async (user, verificationToken) => {
 };
 
 const sendPasswordResetEmail = async (user, resetToken) => {
-    const resetURL = `${process.env.FRONTEND_URL}/#/security/reset-password/${encodeURIComponent(resetToken)}`;
+    const resetURL = `${process.env.FRONTEND_URL}/reset-password/${encodeURIComponent(resetToken)}`;
     const msg = {
         to: user.email,
         from: process.env.SENDGRID_FROM_EMAIL,
