@@ -11,11 +11,14 @@ const UserSchema = new mongoose.Schema({
     dob: {type: Date, required: false, default: null},
     avatar: {type: String},
     activeState: {type: Boolean, required: true},
-    verificationToken: {type: String},
     isVerified: {type: Boolean, required: true},
     passwordResetToken: {type: String, default: null},
     passwordResetTokenExpires: {type: Date, default: null},
     role: {type: String, required: true, enum: ENUMS.ROLES},
+    otp: { type: Number },
+    otpExpiry: { type: Date },
+    isPhoneVerified: { type: Boolean, default: false },
+    isEmailVerified: { type: Boolean, default: false },
     createdAt: {type: Date, default: Date.now},
     updatedAt: {type: Date, default: Date.now}
 });

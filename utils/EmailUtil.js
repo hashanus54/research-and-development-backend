@@ -1,6 +1,46 @@
 const sgMail = require('@sendgrid/mail');
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
+const appName = process.env.APPLICATION_NAME;
+
+const sendOTPEmail = async (user, otp) => {
+    try {
+        if (!user || !user.email) {
+            throw new Error('Invalid user object or email is missing.');
+        }
+        if (!otp) {
+            throw new Error('OTP is missing.');
+        }
+        const msg = {
+            to: user.email,
+            from: process.env.SENDGRID_FROM_EMAIL,
+            subject: 'Account Verification OTP',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2>Account Verification</h2>
+                    <p>Hello ${user.firstName} ${user.lastName},</p>
+                    <p>Thank you for signing up. Please use the following OTP to verify your account:</p>
+                    <div style="text-align: center; margin: 30px 0;">
+                        <div style="background-color: #f5f5f5; padding: 20px; border-radius: 4px; 
+                                    font-size: 24px; font-weight: bold; letter-spacing: 5px;">
+                            ${otp}
+                        </div>
+                    </div>
+                    <p>This OTP will expire in 10 minutes.</p>
+                    <p>If you didn't sign up for this account, please ignore this email.</p>
+                    <p>Best regards,<br>${process.env.APP_NAME || 'Your App'}</p>
+                </div>
+            `
+        };
+        await sgMail.send(msg);
+        console.log('OTP email sent successfully to:', user.email);
+    } catch (error) {
+        console.error('Error sending OTP email:', error.message);
+        throw new Error('Failed to send OTP email.');
+    }
+};
+
+
 const sendVerificationEmail = async (user, verificationToken) => {
     const verificationURL = `${process.env.FRONTEND_URL}/verify-email/${encodeURIComponent(verificationToken)}`;
     const msg = {
@@ -21,7 +61,7 @@ const sendVerificationEmail = async (user, verificationToken) => {
                 </div>
                 <p>If you didn't sign up for this account, please ignore this email.</p>
                 <p>This link will expire in 1 hour.</p>
-                <p>Best regards,<br>Your App Team</p>
+                <p>Best regards,<br>${appName}</p>
             </div>
         `
     };
@@ -37,7 +77,7 @@ const sendPasswordResetEmail = async (user, resetToken) => {
         html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <h2>Password Reset Request</h2>
-                <p>Hello ${user.fullName},</p>
+                <p>Hello ${user.firstName} ${user.lastName},</p>
                 <p>You requested to reset your password. Click the button below to reset it:</p>
                 <div style="text-align: center; margin: 30px 0;">
                     <a href="${resetURL}" 
@@ -48,7 +88,7 @@ const sendPasswordResetEmail = async (user, resetToken) => {
                 </div>
                 <p>If you didn't request this, please ignore this email.</p>
                 <p>This link will expire in 1 hour.</p>
-                <p>Best regards,<br>Your App Team</p>
+                <p>Best regards,<br>${appName}</p>
             </div>
         `
     };
@@ -63,37 +103,10 @@ const sendPasswordResetConfirmationEmail = async (user) => {
         html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <h2>Password Reset Successful</h2>
-                <p>Hello ${user.fullName},</p>
+                <p>Hello ${user.firstName} ${user.lastName},</p>
                 <p>Your password has been successfully reset.</p>
                 <p>If you didn't perform this action, please contact our support team immediately.</p>
-                <p>Best regards,<br>Your App Team</p>
-            </div>
-        `
-    };
-    await sgMail.send(msg);
-};
-
-const resendVerificationEmailUtil = async (user, verificationToken) => {
-    const verificationURL = `${process.env.FRONTEND_URL}/verify-email/${encodeURIComponent(verificationToken)}`;
-    const msg = {
-        to: user.email,
-        from: process.env.SENDGRID_FROM_EMAIL,
-        subject: 'Email Verification Request',
-        html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2>Email Verification Request</h2>
-                <p>Hello ${user.fullName},</p>
-                <p>You requested to verify your email address. Click the button below to verify it:</p>
-                <div style="text-align: center; margin: 30px 0;">
-                    <a href="${verificationURL}" 
-                       style="background-color: #4CAF50; color: white; padding: 14px 20px; 
-                              text-decoration: none; border-radius: 4px;">
-                        Verify Email
-                    </a>
-                </div>
-                <p>If you didn't request this, please ignore this email.</p>
-                <p>This link will expire in 1 hour.</p>
-                <p>Best regards,<br>Your App Team</p>
+                <p>Best regards,<br>${appName}</p>
             </div>
         `
     };
@@ -101,8 +114,8 @@ const resendVerificationEmailUtil = async (user, verificationToken) => {
 };
 
 module.exports = {
+    sendOTPEmail,
     sendVerificationEmail,
     sendPasswordResetEmail,
-    sendPasswordResetConfirmationEmail,
-    resendVerificationEmailUtil
+    sendPasswordResetConfirmationEmail
 };

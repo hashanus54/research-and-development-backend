@@ -2,41 +2,46 @@ const UserSchema = require('../schemas/UserSchema');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const { createSMSClient, createSession, sendMessage, closeSession } = require('../utils/SMSUtil');
-const {
-    sendVerificationEmail,
-    sendPasswordResetEmail,
-    sendPasswordResetConfirmationEmail,
-    resendVerificationEmailUtil
-} = require('../utils/EmailUtil');
+const {createSMSClient, createSession, sendMessage, closeSession} = require('../utils/SMSUtil');
+const {sendPasswordResetEmail, sendPasswordResetConfirmationEmail,sendOTPEmail} = require('../utils/EmailUtil');
 
+
+const appName = process.env.APPLICATION_NAME;
 
 const initializeAdmin = async () => {
     try {
-        const adminEmail = "admin@gmail.com";
-        const adminPassword = "admin123";
+        const adminFirstName = process.env.ADMIN_USER_FIRST_NAME;
+        const adminLastName = process.env.ADMIN_USER_LAST_NAME;
+        const adminEmail = process.env.ADMIN_USER_EMAIL;
+        const adminPassword = process.env.ADMIN_USER_PASSWORD;
+        const adminMobile = process.env.ADMIN_USER_MOBILE;
 
         const existingAdmin = await UserSchema.findOne({email: adminEmail});
         if (existingAdmin) {
             return;
         }
         const hashedPassword = await bcrypt.hash(adminPassword, 10);
+        const otp = Math.floor(100000 + Math.random() * 900000);
+        const otpExpiry = new Date(Date.now() + 10 * 60 * 1000)
 
         const adminUser = new UserSchema({
-            firstName: "Admin",
-            lastName: "Admin",
+            firstName: adminFirstName,
+            lastName: adminLastName,
             email: adminEmail,
-            mobile: "0766308272",
+            mobile: adminMobile,
             password: hashedPassword,
             confirmPassword: hashedPassword,
             dob: "",
             avatar: "",
             activeState: true,
-            verificationToken: "",
             isVerified: true,
             passwordResetToken: null,
             passwordResetTokenExpires: null,
-            role: "ADMIN"
+            role: "ADMIN",
+            otp,
+            otpExpiry,
+            isPhoneVerified: true,
+            isEmailVerified: true
         });
         await adminUser.save();
         console.log("Admin user saved to MongoDB");
@@ -46,45 +51,6 @@ const initializeAdmin = async () => {
     }
 }
 
-const verifyUser = async (req, res) => {
-    try {
-        const {verificationToken} = req.params;
-
-        const user = await UserSchema.findOne({verificationToken});
-        if (!user) {
-            return res.status(404).json({
-                status: false,
-                message: 'Invalid or expired verification token'
-            });
-        }
-
-        if (user.verificationTokenExpires < Date.now()) {
-            return res.status(400).json({
-                status: false,
-                message: 'Verification token has expired'
-            });
-        }
-
-        user.isVerified = true;
-        user.activeState = true;
-        user.verificationToken = "";
-        await user.save();
-
-        return res.status(200).json({
-            status: true,
-            message: 'User verified successfully'
-        });
-
-    } catch (error) {
-        console.error('Error verifying user:', error);
-        return res.status(500).json({
-            status: false,
-            message: 'Internal server error'
-        });
-    }
-};
-
-
 const signIn = async (req, res) => {
     try {
         const selectedUser = await UserSchema.findOne({email: req.body.email});
@@ -92,7 +58,7 @@ const signIn = async (req, res) => {
             return res.status(404).json({status: false, message: 'USERNAME NOT FOUND'});
         }
         if (!selectedUser.isVerified) {
-            return res.status(401).json({status: false, message: 'USER NOT VERIFIED'});
+            return res.status(401).json({status: false, message: 'Please verify your email and phone number'});
         }
         const isPasswordValid = await bcrypt.compare(req.body.password, selectedUser.password);
         if (!isPasswordValid) {
@@ -101,7 +67,7 @@ const signIn = async (req, res) => {
         selectedUser.loginTime = new Date().toISOString();
         await selectedUser.save();
 
-        const role = selectedUser.role ? 'ADMIN' : 'USER';
+        const role = selectedUser.role === 'ADMIN' ? 'ADMIN' : 'USER';
 
         const token = jwt.sign({
             'email': selectedUser.email,
@@ -118,31 +84,30 @@ const signIn = async (req, res) => {
     }
 }
 
-
-
 const signUp = async (req, res) => {
     try {
-        const {firstName, lastName, email, mobile, password, confirmPassword, dob} = req.body;
-
+        const { firstName, lastName, email, mobile, password, confirmPassword, dob } = req.body;
         const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
         if (!passwordRegex.test(password)) {
             return res.status(400).json({
                 message: "Password must be at least 8 characters long and include uppercase, lowercase, a number, and a special character."
             });
         }
-
         if (password !== confirmPassword) {
-            return res.status(400).json({message: "Passwords do not match"});
+            return res.status(400).json({ message: "Passwords do not match." });
         }
-
-        const existingUser = await UserSchema.findOne({email});
+        const existingUser = await UserSchema.findOne({ email });
         if (existingUser) {
-            return res.status(400).json({message: "User with this email already exists"});
+            return res.status(400).json({ message: "User with this email already exists." });
+        }
+        if (!mobile || !/^\d{10,15}$/.test(mobile)) {
+            return res.status(400).json({ message: 'A valid mobile number is required.' });
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        const verificationToken = crypto.randomBytes(32).toString('hex');
 
+        const otp = Math.floor(100000 + Math.random() * 900000);
+        const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
         const newUser = new UserSchema({
             firstName,
             lastName,
@@ -153,23 +118,142 @@ const signUp = async (req, res) => {
             dob,
             avatar: "",
             activeState: false,
-            verificationToken,
             isVerified: false,
             passwordResetToken: null,
             passwordResetTokenExpires: null,
-            role: "USER"
+            role: "USER",
+            otp,
+            otpExpiry,
+            isPhoneVerified: false,
+            isEmailVerified: false
         });
 
         await newUser.save();
-        await sendVerificationEmail(newUser, verificationToken);
+
+        // Send OTP email
+        await sendOTPEmail(newUser, otp);
+
+        // // SMS configuration
+        // const smsConfig = {
+        //     username: process.env.SMS_USERNAME,
+        //     password: process.env.SMS_PASSWORD
+        // };
+        //
+        // const client = await createSMSClient(smsConfig);
+        // const session = await createSession(client, smsConfig);
+        //
+        // // SMS messages
+        // const welcomeMessage = `Welcome to ${process.env.APP_NAME || 'Your App'}, ${firstName}!`;
+        // const otpMessage = `Your OTP for account verification is: ${otp}. This code will expire in 10 minutes.`;
+        //
+        // await Promise.all([
+        //     sendMessage(client, session, process.env.SMS_SENDER_ALIAS, welcomeMessage, [mobile]),
+        //     sendMessage(client, session, process.env.SMS_SENDER_ALIAS, otpMessage, [mobile])
+        // ]);
+        //
+        // await closeSession(client, session);
 
         return res.status(201).json({
             status: true,
-            message: 'User created successfully. Verification email sent.'
+            message: 'User created successfully. Please verify your account with the OTP sent to your email and phone.'
         });
 
     } catch (error) {
         console.error('Error during signup:', error);
+        return res.status(500).json({ message: 'Server error, please try again later.' });
+    }
+};
+
+const verifyUserWithOtp = async (req, res) => {
+    try {
+        const {email, otp, verificationType} = req.body;
+
+        const user = await UserSchema.findOne({email});
+        if (!user) {
+            return res.status(404).json({message: 'User not found'});
+        }
+
+        if (user.otpExpiry < new Date()) {
+            return res.status(400).json({message: 'OTP has expired. Please request a new one.'});
+        }
+
+        if (user.otp !== parseInt(otp)) {
+            return res.status(400).json({message: 'Invalid OTP'});
+        }
+
+        if (verificationType === 'phone') {
+            user.isPhoneVerified = true;
+        } else if (verificationType === 'email') {
+            user.isEmailVerified = true;
+        } else {
+            return res.status(400).json({message: 'Invalid verification type'});
+        }
+
+        if (user.isPhoneVerified || user.isEmailVerified) {
+            user.isVerified = true;
+            user.activeState = true;
+            user.otp = 0;
+            user.otpExpiry = null;
+        }
+
+        await user.save();
+
+        return res.status(200).json({
+            status: true,
+            message: `${verificationType === 'phone' ? 'Phone number' : 'Email'} verified successfully`
+        });
+
+    } catch (error) {
+        console.error('Error during OTP verification:', error);
+        return res.status(500).json({message: 'Server error, please try again later'});
+    }
+};
+
+const resendOTP = async (req, res) => {
+    try {
+        const {email} = req.body;
+
+        const user = await UserSchema.findOne({email});
+        if (!user) {
+            return res.status(404).json({message: 'User not found'});
+        }
+
+        const otp = Math.floor(100000 + Math.random() * 900000);
+        const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+
+        user.otp = otp;
+        user.otpExpiry = otpExpiry;
+        await user.save();
+
+        await sendOTPEmail(user, otp);
+
+        // // Send new OTP via SMS
+        // const smsConfig = {
+        //     username: process.env.SMS_USERNAME,
+        //     password: process.env.SMS_PASSWORD
+        // };
+        //
+        // const client = await createSMSClient(smsConfig);
+        // const session = await createSession(client, smsConfig);
+        //
+        // const otpMessage = `Your new OTP for account verification is: ${otp}. This code will expire in 10 minutes.`;
+        // await sendMessage(
+        //     client,
+        //     session,
+        //     process.env.SMS_SENDER_ALIAS,
+        //     otpMessage,
+        //     [user.mobile]
+        // );
+        //
+        // await closeSession(client, session);
+
+        return res.status(200).json({
+            status: true,
+            message: 'New OTP has been sent to your email and phone number'
+        });
+
+    } catch (error) {
+        console.error('Error resending OTP:', error);
         return res.status(500).json({message: 'Server error, please try again later'});
     }
 };
@@ -247,134 +331,12 @@ const resetPassword = async (req, res) => {
     }
 };
 
-const resendVerificationEmail = async (req, res) => {
-    try {
-        const { email } = req.body;
-        const user = await UserSchema.findOne({ email });
-        if (!user) {
-            return res.status(404).json({
-                status: false,
-                message: 'USER NOT FOUND'
-            });
-        }
-        if (user.isVerified) {
-            return res.status(400).json({
-                status: false,
-                message: 'Email already verified'
-            });
-        }
-
-        if (!user.verificationToken || !user.verificationTokenExpires) {
-            return res.status(400).json({
-                status: false,
-                message: 'No verification token found or token expired'
-            });
-        }
-
-        const currentTime = new Date();
-        if (user.verificationTokenExpires < currentTime) {
-            return res.status(400).json({
-                status: false,
-                message: 'Verification token has expired'
-            });
-        }
-
-        await resendVerificationEmailUtil(user, user.verificationToken);
-
-        return res.status(200).json({
-            status: true,
-            message: 'VERIFICATION EMAIL SENT TO EMAIL'
-        });
-
-    } catch (error) {
-        console.error('Error in resend verification email:', error);
-        return res.status(500).json({
-            status: false,
-            message: 'INTERNAL SERVER ERROR'
-        });
-    }
-};
-
-const signUpWithMessage = async (req, res) => {
-    try {
-        const {firstName, lastName, email, mobile, password, confirmPassword, dob} = req.body;
-
-        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-        if (!passwordRegex.test(password)) {
-            return res.status(400).json({
-                message: "Password must be at least 8 characters long and include uppercase, lowercase, a number, and a special character."
-            });
-        }
-
-        if (password !== confirmPassword) {
-            return res.status(400).json({message: "Passwords do not match"});
-        }
-
-        const existingUser = await UserSchema.findOne({email});
-        if (existingUser) {
-            return res.status(400).json({message: "User with this email already exists"});
-        }
-
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const verificationToken = crypto.randomBytes(32).toString('hex');
-
-        const newUser = new UserSchema({
-            firstName,
-            lastName,
-            email,
-            mobile,
-            password: hashedPassword,
-            confirmPassword: hashedPassword,
-            dob,
-            avatar: "",
-            activeState: false,
-            verificationToken,
-            isVerified: false,
-            passwordResetToken: null,
-            passwordResetTokenExpires: null,
-            role: "USER"
-        });
-
-        await newUser.save();
-        await sendVerificationEmail(newUser, verificationToken);
-
-        const smsConfig = {
-            username: process.env.SMS_USERNAME,
-            password: process.env.SMS_PASSWORD
-        };
-
-        const client = await createSMSClient(smsConfig);
-        const session = await createSession(client, smsConfig);
-
-        const smsMessage = `Welcome to YourApp, ${firstName}! Please check your email to verify your account.`;
-        await sendMessage(
-            client,
-            session,
-            process.env.SMS_SENDER_ALIAS,
-            smsMessage,
-            [mobile]
-        );
-
-        await closeSession(client, session);
-
-        return res.status(201).json({
-            status: true,
-            message: 'User created successfully. Verification email and SMS sent.'
-        });
-
-    } catch (error) {
-        console.error('Error during signup:', error);
-        return res.status(500).json({message: 'Server error, please try again later'});
-    }
-};
-
 module.exports = {
     initializeAdmin,
     signUp,
-    verifyUser,
     signIn,
     forgotPassword,
     resetPassword,
-    resendVerificationEmail,
-    signUpWithMessage
+    verifyUserWithOtp,
+    resendOTP
 };

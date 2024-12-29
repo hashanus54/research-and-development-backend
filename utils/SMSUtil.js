@@ -21,12 +21,21 @@ const createSession = async (client, config) => {
     };
 
     const result = await client.createSessionAsync({ user });
-    return result[0].return;
+    console.log('createSessionAsync result:', result);
+
+    // Check response structure and extract session
+    const session = result[0]?.return || result?.return;
+    if (!session) {
+      throw new Error('Session not returned in SOAP response');
+    }
+
+    return session;
   } catch (error) {
-    console.error('Error creating session:', error);
+    console.error('Error creating session:', error.response?.body || error);
     throw new Error('Failed to create SMS session');
   }
 };
+
 
 const sendMessage = async (client, session, alias, message, recipients, messageType = 0) => {
   try {
