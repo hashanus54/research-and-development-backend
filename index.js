@@ -31,6 +31,7 @@ mongoose.connect(DB_CONNECTION_STRING).then(async () => {
     }
     app.listen(PORT, () => {
         console.log(`API started and running on port ${PORT}`);
+
     });
 }).catch(error => {
     console.error("Failed to connect to MongoDB:", error);

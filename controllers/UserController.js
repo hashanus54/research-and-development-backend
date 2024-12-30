@@ -4,6 +4,8 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const {createSMSClient, createSession, sendMessage, closeSession} = require('../utils/SMSUtil');
 const {sendPasswordResetEmail, sendPasswordResetConfirmationEmail, sendOTPEmail} = require('../utils/EmailUtil');
+const { generateNumericOtp, generateAlphanumericOtp } = require('../utils/OtpGeneraterUtil');
+
 
 
 const appName = process.env.APPLICATION_NAME;
@@ -103,8 +105,11 @@ const signUp = async (req, res) => {
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        const otp = Math.floor(100000 + Math.random() * 900000);
+        const emailOtp = generateAlphanumericOtp();
+        const mobileOtp = generateNumericOtp();
+
         const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+
         const newUser = new UserSchema({
             firstName,
             lastName,
@@ -119,8 +124,10 @@ const signUp = async (req, res) => {
             passwordResetToken: null,
             passwordResetTokenExpires: null,
             role: "USER",
-            otp,
-            otpExpiry,
+            emailOtp,
+            mobileOtp,
+            emailOtpExpiry:otpExpiry,
+            mobileOtpExpiry:otpExpiry,
             isPhoneVerified: false,
             isEmailVerified: false
         });
@@ -128,7 +135,7 @@ const signUp = async (req, res) => {
         await newUser.save();
 
         // Send OTP email
-        await sendOTPEmail(newUser, otp);
+        await sendOTPEmail(newUser, emailOtp);
 
         // // SMS configuration
         // const smsConfig = {
@@ -141,7 +148,7 @@ const signUp = async (req, res) => {
         //
         // // SMS messages
         // const welcomeMessage = `Welcome to ${process.env.APP_NAME || 'Your App'}, ${firstName}!`;
-        // const otpMessage = `Your OTP for account verification is: ${otp}. This code will expire in 10 minutes.`;
+        // const otpMessage = `Your OTP for account verification is: ${mobileOtp}. This code will expire in 10 minutes.`;
         //
         // await Promise.all([
         //     sendMessage(client, session, process.env.SMS_SENDER_ALIAS, welcomeMessage, [mobile]),
@@ -161,7 +168,7 @@ const signUp = async (req, res) => {
     }
 };
 
-const verifyUserWithOtp = async (req, res) => {
+/*const verifyUserWithOtp = async (req, res) => {
     try {
         const {email, otp, verificationType} = req.body;
 
@@ -206,6 +213,103 @@ const verifyUserWithOtp = async (req, res) => {
     }
 };
 
+*/
+
+const verifyEmailWithOtp = async (req, res) => {
+    try {
+        const { email, emailOtp } = req.body;
+
+        // Log the email and entered OTP for debugging
+        console.log('Received email:', email);
+        console.log('Received OTP:', emailOtp);
+
+        // Find the user by email
+        const user = await UserSchema.findOne({ email });
+        if (!user) {
+            console.log('User not found:', email);
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Log the existing OTP and expiry for debugging
+        console.log('Existing OTP in database:', user.emailOtp);
+        console.log('OTP expiry:', user.emailOtpExpiry);
+
+        if (user.emailOtpExpiry < new Date()) {
+            console.log('OTP has expired for user:', email);
+            return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
+        }
+
+        // Compare OTPs as strings
+        if (user.emailOtp.trim() !== emailOtp.trim()) {
+            console.log('Invalid OTP entered:', emailOtp);
+            return res.status(400).json({ message: 'Invalid OTP' });
+        }
+
+        // Mark the email as verified
+        user.isEmailVerified = true;
+
+        if (user.isEmailVerified && user.isPhoneVerified) {
+            user.activeState = true;
+            user.isVerified = true;
+        }
+
+        // Reset OTP and expiry
+        user.emailOtp = 0;
+        user.emailOtpExpiry = null;
+
+        await user.save();
+
+        console.log('Email verified successfully:', email);
+
+        return res.status(200).json({
+            status: true,
+            message: 'Email verified successfully',
+        });
+    } catch (error) {
+        console.error('Error during email OTP verification:', error);
+        return res.status(500).json({ message: 'Server error, please try again later' });
+    }
+};
+
+const verifyPhoneWithOtp = async (req, res) => {
+    try {
+        const { email, mobileOtp } = req.body;
+
+        const user = await UserSchema.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        if (user.mobileOtpExpiry < new Date()) {
+            return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
+        }
+
+        if (user.mobileOtp !== parseInt(mobileOtp)) {
+            return res.status(400).json({ message: 'Invalid OTP' });
+        }
+
+        user.isPhoneVerified = true;
+
+        if (user.isEmailVerified && user.isPhoneVerified) {
+            user.activeState = true;
+            user.isVerified = true;
+        }
+
+        user.mobileOtp = 0;
+        user.mobileOtpExpiry = null;
+
+        await user.save();
+
+        return res.status(200).json({
+            status: true,
+            message: 'Phone number verified successfully',
+        });
+    } catch (error) {
+        console.error('Error during phone OTP verification:', error);
+        return res.status(500).json({ message: 'Server error, please try again later' });
+    }
+};
+
 const resendOTP = async (req, res) => {
     try {
         const {email} = req.body;
@@ -215,14 +319,17 @@ const resendOTP = async (req, res) => {
             return res.status(404).json({message: 'User not found'});
         }
 
-        const otp = Math.floor(100000 + Math.random() * 900000);
+        const emailOtp = generateAlphanumericOtp();
+        const mobileOtp = generateNumericOtp();
         const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
 
-        user.otp = otp;
-        user.otpExpiry = otpExpiry;
+        user.emailOtp = emailOtp;
+        user.mobileOtp = mobileOtp;
+        user.emailOtpExpiry = otpExpiry;
+        user.mobileOtpExpiry = otpExpiry;
         await user.save();
 
-        await sendOTPEmail(user, otp);
+        await sendOTPEmail(user, emailOtp);
 
         // // Send new OTP via SMS
         // const smsConfig = {
@@ -533,7 +640,8 @@ module.exports = {
     signIn,
     forgotPassword,
     resetPassword,
-    verifyUserWithOtp,
+    verifyEmailWithOtp,
+    verifyPhoneWithOtp,
     resendOTP,
     createDirector,
     updateUser,

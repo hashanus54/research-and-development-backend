@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const ENUMS = require('./enums/UserEnums');
 
+
 const UserSchema = new mongoose.Schema({
     firstName: {type: String, required: true},
     lastName: {type: String, required: true},
@@ -15,8 +16,10 @@ const UserSchema = new mongoose.Schema({
     passwordResetToken: {type: String, default: null},
     passwordResetTokenExpires: {type: Date, default: null},
     role: {type: String, required: true, enum: ENUMS.ROLES},
-    otp: { type: Number },
-    otpExpiry: { type: Date },
+    emailOtp: { type: String },
+    mobileOtp: { type: Number },
+    emailOtpExpiry: { type: Date },
+    mobileOtpExpiry: { type: Date },
     isPhoneVerified: { type: Boolean, default: false },
     isEmailVerified: { type: Boolean, default: false },
     createdAt: {type: Date, default: Date.now},

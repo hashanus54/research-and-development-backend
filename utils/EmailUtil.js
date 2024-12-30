@@ -3,6 +3,7 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const appName = process.env.APPLICATION_NAME;
 
+
 const sendOTPEmail = async (user, otp) => {
     try {
         if (!user || !user.email) {
@@ -28,7 +29,7 @@ const sendOTPEmail = async (user, otp) => {
                     </div>
                     <p>This OTP will expire in 10 minutes.</p>
                     <p>If you didn't sign up for this account, please ignore this email.</p>
-                    <p>Best regards,<br>${process.env.APP_NAME || 'Your App'}</p>
+                   <p>Best regards,<br>${appName}</p>
                 </div>
             `
         };
@@ -39,7 +40,6 @@ const sendOTPEmail = async (user, otp) => {
         throw new Error('Failed to send OTP email.');
     }
 };
-
 
 const sendVerificationEmail = async (user, verificationToken) => {
     const verificationURL = `${process.env.FRONTEND_URL}/verify-email/${encodeURIComponent(verificationToken)}`;
