@@ -4,8 +4,8 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const {createSMSClient, createSession, sendMessage, closeSession} = require('../utils/SMSUtil');
 const {sendPasswordResetEmail, sendPasswordResetConfirmationEmail, sendOTPEmail} = require('../utils/EmailUtil');
-const { generateNumericOtp, generateAlphanumericOtp } = require('../utils/OtpGeneraterUtil');
-
+const {generateNumericOtp, generateAlphanumericOtp} = require('../utils/OtpGeneraterUtil');
+const USER_ENUMS = require('../schemas/enums/UserEnums');
 
 
 const appName = process.env.APPLICATION_NAME;
@@ -26,17 +26,20 @@ const initializeAdmin = async () => {
         const adminUser = new UserSchema({
             firstName: adminFirstName,
             lastName: adminLastName,
-            email: adminEmail,
+            designation: "Super Admin",
+            company: "Research And Development",
             mobile: adminMobile,
+            email: adminEmail,
+            country: "Sri Lanka",
+            userName: adminFirstName + " " + adminLastName,
             password: hashedPassword,
             confirmPassword: hashedPassword,
-            dob: "",
             avatar: "",
             activeState: true,
             isVerified: true,
             passwordResetToken: null,
             passwordResetTokenExpires: null,
-            role: "SUPER_ADMIN",
+            role: USER_ENUMS.ROLES.SUPER_ADMIN,
             otp: null,
             otpExpiry: null,
             isPhoneVerified: true,
@@ -57,86 +60,101 @@ const signIn = async (req, res) => {
             return res.status(404).json({status: false, message: 'USERNAME NOT FOUND'});
         }
         if (!selectedUser.isVerified) {
-            return res.status(401).json({status: false, message: 'Please verify your email and phone number'});
+            return res.status(401).json({status: false, message: 'PLEASE VERIFY YOUR EMAIL AND PHONE NUMBER'});
         }
         const isPasswordValid = await bcrypt.compare(req.body.password, selectedUser.password);
         if (!isPasswordValid) {
             return res.status(401).json({status: false, message: "INCORRECT PASSWORD"});
         }
-        selectedUser.loginTime = new Date().toISOString();
+        selectedUser.lastLoginTime = new Date().toISOString();
         await selectedUser.save();
 
+        const email = selectedUser.email;
         const role = selectedUser.role;
+        const id = selectedUser._id;
 
-        const token = jwt.sign({
-            'email': selectedUser.email,
-            role,
-            id: selectedUser._id
-        }, process.env.SECRET_KEY, {expiresIn: 3600});
+        const token = jwt.sign({email, role, id}, process.env.SECRET_KEY, {expiresIn: 3600});
         res.setHeader('Authorization', `Bearer ${token}`);
 
         return res.status(200).json({status: true, message: "USER LOGIN SUCCESSFULLY", token});
 
     } catch (error) {
         console.error(error);
-        return res.status(500).json({message: 'Internal server error'});
+        return res.status(500).json({status:false,message: 'Internal server error'});
     }
 }
 
 const signUp = async (req, res) => {
     try {
-        const {firstName, lastName, email, mobile, password, confirmPassword, dob} = req.body;
+        const {firstName, lastName, designation, company, mobile, email, country, password, confirmPassword} = req.body;
         const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
         if (!passwordRegex.test(password)) {
             return res.status(400).json({
+                status: false,
                 message: "Password must be at least 8 characters long and include uppercase, lowercase, a number, and a special character."
             });
         }
+
         if (password !== confirmPassword) {
-            return res.status(400).json({message: "Passwords do not match."});
+            return res.status(400).json({status: false, message: "Passwords do not match."});
         }
+
         const existingUser = await UserSchema.findOne({email});
         if (existingUser) {
-            return res.status(400).json({message: "User with this email already exists."});
+            return res.status(400).json({status: false, message: "User with this email already exists."});
         }
-        if (!mobile || !/^\d{10,15}$/.test(mobile)) {
-            return res.status(400).json({message: 'A valid mobile number is required.'});
+
+        if (!mobile || !/^\+\d{1,3}\d{9,12}$/.test(mobile)) {
+            return res.status(400).json({
+                status: false,
+                message: 'A valid mobile number with a country code is required (e.g., +94701234567).'
+            });
+        }
+
+        if (country.toLowerCase() === 'sri lanka' && !mobile.startsWith('+94')) {
+            return res.status(400).json({status: false, message: 'Sri Lankan phone numbers must start with +94'});
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-
         const emailOtp = generateAlphanumericOtp();
-        const mobileOtp = generateNumericOtp();
-
+        const requiresPhoneVerification = mobile.startsWith('+94');
+        const mobileOtp = requiresPhoneVerification ? generateNumericOtp() : null;
         const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
 
         const newUser = new UserSchema({
             firstName,
             lastName,
-            email,
+            designation,
+            company,
             mobile,
+            email,
+            country,
+            userName: firstName + " " + lastName,
             password: hashedPassword,
             confirmPassword: hashedPassword,
-            dob,
             avatar: "",
             activeState: false,
             isVerified: false,
             passwordResetToken: null,
             passwordResetTokenExpires: null,
-            role: "USER",
+            role: USER_ENUMS.ROLES.USER,
             emailOtp,
             mobileOtp,
-            emailOtpExpiry:otpExpiry,
-            mobileOtpExpiry:otpExpiry,
-            isPhoneVerified: false,
+            emailOtpExpiry: otpExpiry,
+            mobileOtpExpiry: requiresPhoneVerification ? otpExpiry : null,
+            isPhoneVerified: !requiresPhoneVerification,
             isEmailVerified: false
         });
+
 
         await newUser.save();
 
         // Send OTP email
         await sendOTPEmail(newUser, emailOtp);
 
+        //if (requiresPhoneVerification) {
+        // SMS logic here (uncomment when needed)
         // // SMS configuration
         // const smsConfig = {
         //     username: process.env.SMS_USERNAME,
@@ -156,78 +174,35 @@ const signUp = async (req, res) => {
         // ]);
         //
         // await closeSession(client, session);
+        // }
+
 
         return res.status(201).json({
             status: true,
-            message: 'User created successfully. Please verify your account with the OTP sent to your email and phone.'
+            message: requiresPhoneVerification ?
+                'User created successfully. Please verify your account with the OTP sent to your email and phone.' :
+                'User created successfully. Please verify your account with the OTP sent to your email.'
         });
 
     } catch (error) {
         console.error('Error during signup:', error);
-        return res.status(500).json({message: 'Server error, please try again later.'});
+        return res.status(500).json({status: false, message: 'Server error, please try again later.'});
     }
 };
-
-/*const verifyUserWithOtp = async (req, res) => {
-    try {
-        const {email, otp, verificationType} = req.body;
-
-        const user = await UserSchema.findOne({email});
-        if (!user) {
-            return res.status(404).json({message: 'User not found'});
-        }
-
-        if (user.otpExpiry < new Date()) {
-            return res.status(400).json({message: 'OTP has expired. Please request a new one.'});
-        }
-
-        if (user.otp !== parseInt(otp)) {
-            return res.status(400).json({message: 'Invalid OTP'});
-        }
-
-        if (verificationType === 'phone') {
-            user.isPhoneVerified = true;
-        } else if (verificationType === 'email') {
-            user.isEmailVerified = true;
-        } else {
-            return res.status(400).json({message: 'Invalid verification type'});
-        }
-
-        if (user.isPhoneVerified || user.isEmailVerified) {
-            user.isVerified = true;
-            user.activeState = true;
-            user.otp = 0;
-            user.otpExpiry = null;
-        }
-
-        await user.save();
-
-        return res.status(200).json({
-            status: true,
-            message: `${verificationType === 'phone' ? 'Phone number' : 'Email'} verified successfully`
-        });
-
-    } catch (error) {
-        console.error('Error during OTP verification:', error);
-        return res.status(500).json({message: 'Server error, please try again later'});
-    }
-};
-
-*/
 
 const verifyEmailWithOtp = async (req, res) => {
     try {
-        const { email, emailOtp } = req.body;
+        const {email, emailOtp} = req.body;
 
         // Log the email and entered OTP for debugging
         console.log('Received email:', email);
         console.log('Received OTP:', emailOtp);
 
         // Find the user by email
-        const user = await UserSchema.findOne({ email });
+        const user = await UserSchema.findOne({email});
         if (!user) {
             console.log('User not found:', email);
-            return res.status(404).json({ message: 'User not found' });
+            return res.status(404).json({status: false, message: 'User not found'});
         }
 
         // Log the existing OTP and expiry for debugging
@@ -236,19 +211,20 @@ const verifyEmailWithOtp = async (req, res) => {
 
         if (user.emailOtpExpiry < new Date()) {
             console.log('OTP has expired for user:', email);
-            return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
+            return res.status(400).json({status: false, message: 'OTP has expired. Please request a new one.'});
         }
 
         // Compare OTPs as strings
         if (user.emailOtp.trim() !== emailOtp.trim()) {
             console.log('Invalid OTP entered:', emailOtp);
-            return res.status(400).json({ message: 'Invalid OTP' });
+            return res.status(400).json({status: false, message: 'Invalid OTP'});
         }
 
         // Mark the email as verified
         user.isEmailVerified = true;
 
-        if (user.isEmailVerified && user.isPhoneVerified) {
+        const requiresPhoneVerification = user.mobile.startsWith('+94');
+        if (!requiresPhoneVerification || (requiresPhoneVerification && user.isPhoneVerified)) {
             user.activeState = true;
             user.isVerified = true;
         }
@@ -267,25 +243,25 @@ const verifyEmailWithOtp = async (req, res) => {
         });
     } catch (error) {
         console.error('Error during email OTP verification:', error);
-        return res.status(500).json({ message: 'Server error, please try again later' });
+        return res.status(500).json({status: false, message: 'Server error, please try again later'});
     }
 };
 
 const verifyPhoneWithOtp = async (req, res) => {
     try {
-        const { email, mobileOtp } = req.body;
+        const {email, mobileOtp} = req.body;
 
-        const user = await UserSchema.findOne({ email });
+        const user = await UserSchema.findOne({email});
         if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+            return res.status(404).json({status: false, message: 'User not found'});
         }
 
         if (user.mobileOtpExpiry < new Date()) {
-            return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
+            return res.status(400).json({status: false, message: 'OTP has expired. Please request a new one.'});
         }
 
         if (user.mobileOtp !== parseInt(mobileOtp)) {
-            return res.status(400).json({ message: 'Invalid OTP' });
+            return res.status(400).json({status: false, message: 'Invalid OTP'});
         }
 
         user.isPhoneVerified = true;
@@ -306,7 +282,7 @@ const verifyPhoneWithOtp = async (req, res) => {
         });
     } catch (error) {
         console.error('Error during phone OTP verification:', error);
-        return res.status(500).json({ message: 'Server error, please try again later' });
+        return res.status(500).json({status: false, message: 'Server error, please try again later'});
     }
 };
 
@@ -316,7 +292,7 @@ const resendOTP = async (req, res) => {
 
         const user = await UserSchema.findOne({email});
         if (!user) {
-            return res.status(404).json({message: 'User not found'});
+            return res.status(404).json({status: false, message: 'User not found'});
         }
 
         const emailOtp = generateAlphanumericOtp();
@@ -358,7 +334,7 @@ const resendOTP = async (req, res) => {
 
     } catch (error) {
         console.error('Error resending OTP:', error);
-        return res.status(500).json({message: 'Server error, please try again later'});
+        return res.status(500).json({status: false, message: 'Server error, please try again later'});
     }
 };
 
@@ -441,42 +417,51 @@ const resetPassword = async (req, res) => {
 
 const createDirector = async (req, res) => {
     try {
-        const {firstName, lastName, email, mobile, password, confirmPassword, dob} = req.body;
+        const {firstName, lastName, designation, company, mobile, email, country, password, confirmPassword} = req.body;
 
         const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
         if (!passwordRegex.test(password)) {
             return res.status(400).json({
+                status: false,
                 message: "Password must be at least 8 characters long and include uppercase, lowercase, a number, and a special character."
             });
         }
         if (password !== confirmPassword) {
-            return res.status(400).json({message: "Passwords do not match."});
+            return res.status(400).json({status: false, message: "Passwords do not match."});
         }
         const existingUser = await UserSchema.findOne({email});
         if (existingUser) {
-            return res.status(400).json({message: "User with this email already exists."});
+            return res.status(400).json({status: false, message: "User with this email already exists."});
         }
-        if (!mobile || !/^\d{10,15}$/.test(mobile)) {
-            return res.status(400).json({message: 'A valid mobile number is required.'});
+        if (!mobile || !/^\+\d{1,3}\d{9,12}$/.test(mobile)) {
+            return res.status(400).json({
+                status: false,
+                message: 'A valid mobile number with a country code is required (e.g., +94701234567).'
+            });
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
         const tempDirectorUser = new UserSchema({
             firstName,
             lastName,
-            email,
+            designation,
+            company,
             mobile,
+            email,
+            country,
+            userName: firstName + lastName,
             password: hashedPassword,
             confirmPassword: hashedPassword,
-            dob,
             avatar: "",
             activeState: true,
             isVerified: true,
             passwordResetToken: null,
             passwordResetTokenExpires: null,
-            role: "DIRECTOR",
-            otp: null,
-            otpExpiry: null,
+            role: USER_ENUMS.ROLES.DIRECTOR,
+            emailOtp: null,
+            mobileOtp: null,
+            emailOtpExpiry: null,
+            mobileOtpExpiry: null,
             isPhoneVerified: true,
             isEmailVerified: true
         });
@@ -488,7 +473,7 @@ const createDirector = async (req, res) => {
         });
 
     } catch (error) {
-        return res.status(500).json({message: 'Server error, please try again later.'});
+        return res.status(500).json({status: false, message: 'Server error, please try again later.'});
     }
 };
 
