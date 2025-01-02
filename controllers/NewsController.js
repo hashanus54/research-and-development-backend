@@ -59,12 +59,12 @@ const getNewsById = async (req, res) => {
     NewsSchema.findById({_id: id}).then(result => {
         if (result == null) {
             res.status(200).json({
-                status: false,
+                success: false,
                 message: 'News Not Found',
             });
         } else {
             res.status(200).json({
-                status: true,
+                success: true,
                 message: 'News',
                 data: result
             });
@@ -80,12 +80,12 @@ const deleteNews = async (req, res) => {
     NewsSchema.deleteOne({_id: id}).then(result => {
         if (result.deletedCount > 0) {
             res.status(200).json({
-                status: true,
+                success: true,
                 message: 'News deleted successfully.'
             });
         } else {
             res.status(500).json({
-                status: false,
+                success: false,
                 message: 'Error deleting News'
             });
         }
