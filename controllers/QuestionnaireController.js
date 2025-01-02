@@ -45,8 +45,10 @@ const createQuestionnaire = async (req, res) => {
 
                 const userId = req.user.id;
 
-                // Fetch the user by userId
-                const user = await User.findById(userId);
+                const user = await UserSchema.findById(userId);
+
+                console.log(user.userName);
+
                 if (!user) {
                     return res.status(404).json({
                         status: false,
@@ -102,10 +104,12 @@ const createQuestionnaire = async (req, res) => {
                     approvalNote: req.body.approvalNote || null,
                 });
 
+
                 try {
                     const result = await newQuestionnaire.save().then(() => {
                         sendCustomConfirmationEmail(
                             user,
+                            "Confirmation",
                             "Submission Confirmation",
                             "Thank You for contacting NIRDC. Your proposal has been received and directed to the relevant division. You can log back and check the progress of your application at any time. One of our staff members will contact you within 7 working days"
                         );

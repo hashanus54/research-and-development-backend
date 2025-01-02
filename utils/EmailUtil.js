@@ -17,7 +17,7 @@ const sendOTPEmail = async (user, otp) => {
             subject: 'Account Verification',
             html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <h2>Account Verification</h2>
+                    <h1>Account Verification</h1>
                     <p>Hello ${user.firstName} ${user.lastName},</p>
                     <p>Thank you for signing up. Please use the following OTP to verify your account:</p>
                     <div style="text-align: center; margin: 30px 0;">
@@ -48,7 +48,7 @@ const sendVerificationEmail = async (user, verificationToken) => {
         subject: 'Email Verification',
         html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2>Email Verification</h2>
+                <h1>Email Verification</h1>
                 <p>Hello ${user.firstName} ${user.lastName},</p>
                 <p>Thank you for signing up. Please click the button below to verify your email:</p>
                 <div style="text-align: center; margin: 30px 0;">
@@ -75,7 +75,7 @@ const sendPasswordResetEmail = async (user, resetToken) => {
         subject: 'Password Reset Request',
         html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2>Password Reset Request</h2>
+                <h1>Password Reset Request</h1>
                 <p>Hello ${user.fullName},</p>
                 <p>You requested to reset your password. Click the button below to reset it:</p>
                 <div style="text-align: center; margin: 30px 0;">
@@ -101,7 +101,7 @@ const sendPasswordResetConfirmationEmail = async (user) => {
         subject: 'Password Reset Successful',
         html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2>Password Reset Successful</h2>
+                <h1>Password Reset Successful</h1>
                 <p>Hello ${user.fullName},</p>
                 <p>Your password has been successfully reset.</p>
                 <p>If you didn't perform this action, please contact our support team immediately.</p>
@@ -120,7 +120,7 @@ const resendVerificationEmailUtil = async (user, verificationToken) => {
         subject: 'Email Verification Request',
         html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2>Email Verification Request</h2>
+                <h1>Email Verification Request</h1>
                 <p>Hello ${user.fullName},</p>
                 <p>You requested to verify your email address. Click the button below to verify it:</p>
                 <div style="text-align: center; margin: 30px 0;">
@@ -141,22 +141,24 @@ const resendVerificationEmailUtil = async (user, verificationToken) => {
 
 const sendCustomConfirmationEmail = async (
     user,
+    type,
     title,
     message
 ) => {
     const msg = {
         to: user.email,
         from: process.env.SENDGRID_FROM_EMAIL,
-        subject: 'Confirmation',
+        subject: `${type}`,
         html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2>${title}</h2>
-                <p>Hello ${user.fullName},</p>
+                <h1>${title}</h1>
+                <p>Hello ${user.userName},</p>
                 <p>${message}</p>
                 <p>Best regards, NIRDC Staff <br>${appName}</p>
             </div>
         `
     };
+    console.log("Send");
     await sgMail.send(msg);
 };
 
