@@ -11,9 +11,9 @@ router.post('/reset-password', UserController.resetPassword);
 router.post('/verify-email', UserController.verifyEmailWithOtp);
 router.post('/verify-mobile', UserController.verifyPhoneWithOtp);
 router.post('/resend-otp', UserController.resendOTP);
-router.post('/create-director', authorized(['SUPER_ADMIN', 'ADMIN']), UserController.createDirector);
-router.put('/update-user/:id', authorized(['SUPER_ADMIN']), UserController.updateUser);
-router.put('/update-user-role/:id', authorized(['SUPER_ADMIN']), UserController.updateUserRole);
-router.delete('/delete-user/:id', authorized(['SUPER_ADMIN']), UserController.deleteUser);
+router.post('/admin/create-director', authorized(['SUPER_ADMIN', 'ADMIN']), UserController.createDirector);
+router.put('/admin/update-user/:id', authorized(['SUPER_ADMIN']), UserController.updateUser);
+router.put('/admin/update-user-role/:id', authorized(['SUPER_ADMIN']), UserController.updateUserRole);
+router.delete('/admin/delete-user/:id', authorized(['SUPER_ADMIN']), UserController.deleteUser);
 
 module.exports = router;

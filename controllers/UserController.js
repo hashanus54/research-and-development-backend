@@ -8,7 +8,6 @@ const {generateNumericOtp, generateAlphanumericOtp} = require('../utils/OtpGener
 const USER_ENUMS = require('../schemas/enums/UserEnums');
 
 
-const appName = process.env.APPLICATION_NAME;
 
 const initializeAdmin = async () => {
     try {
