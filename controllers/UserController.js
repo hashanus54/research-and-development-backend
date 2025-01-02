@@ -8,6 +8,7 @@ const {generateNumericOtp, generateAlphanumericOtp} = require('../utils/OtpGener
 const USER_ENUMS = require('../schemas/enums/UserEnums');
 
 
+//===================================== Auth Endpoints ==================================================
 
 const initializeAdmin = async () => {
     try {
@@ -410,9 +411,11 @@ const resetPassword = async (req, res) => {
     }
 };
 
+//===================================== Auth Endpoints ==================================================
+
+
 
 //===================================== Director Endpoints ==================================================
-
 
 const createDirector = async (req, res) => {
     try {
@@ -502,6 +505,12 @@ const getAllDirectors = async (req, res) => {
         });
     }
 };
+
+//===================================== Director Endpoints ==================================================
+
+
+
+//===================================== User Endpoints ==================================================
 
 const updateUser = (req, res) => {
     const userId = req.params.id;
@@ -644,6 +653,7 @@ const deleteUser = (req, res) => {
         });
 };
 
+//===================================== User Endpoints ==================================================
 
 module.exports = {
     initializeAdmin,
