@@ -139,10 +139,33 @@ const resendVerificationEmailUtil = async (user, verificationToken) => {
     await sgMail.send(msg);
 };
 
+const sendCustomConfirmationEmail = async (
+    user,
+    title,
+    message
+) => {
+    const msg = {
+        to: user.email,
+        from: process.env.SENDGRID_FROM_EMAIL,
+        subject: 'Confirmation',
+        html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2>${title}</h2>
+                <p>Hello ${user.fullName},</p>
+                <p>${message}</p>
+                <p>Best regards, NIRDC Staff <br>${appName}</p>
+            </div>
+        `
+    };
+    await sgMail.send(msg);
+};
+
+
 module.exports = {
     sendOTPEmail,
     sendVerificationEmail,
     sendPasswordResetEmail,
     sendPasswordResetConfirmationEmail,
-    resendVerificationEmailUtil
+    resendVerificationEmailUtil,
+    sendCustomConfirmationEmail
 };

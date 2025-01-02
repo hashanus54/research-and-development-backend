@@ -1,9 +1,17 @@
 const Questionnaire = require('../schemas/QuestionnaireSchema');
 const User = require('../schemas/UserSchema');
 const ENUMS = require('../schemas/enums/QuestionnaireEnums');
-const { createUploadFields, cleanupFiles, processUploadedFiles, uploadConfigs,resetFileCounters,deleteFiles } = require('../utils/FileUploadUtil');
+const {
+    createUploadFields,
+    cleanupFiles,
+    processUploadedFiles,
+    uploadConfigs,
+    resetFileCounters,
+    deleteFiles
+} = require('../utils/FileUploadUtil');
 const multer = require('multer');
-
+const {sendCustomConfirmationEmail} = require('../utils/EmailUtil');
+const UserSchema = require("../schemas/UserSchema");
 
 
 const createQuestionnaire = async (req, res) => {
@@ -36,6 +44,16 @@ const createQuestionnaire = async (req, res) => {
                 }
 
                 const userId = req.user.id;
+
+                // Fetch the user by userId
+                const user = await User.findById(userId);
+                if (!user) {
+                    return res.status(404).json({
+                        status: false,
+                        message: "User not found."
+                    });
+                }
+
                 const updatedUploadDir = `questionnaires/`;
                 processedFiles = processUploadedFiles(
                     req.files || {},
@@ -47,6 +65,7 @@ const createQuestionnaire = async (req, res) => {
                 uploadConfigs.questionnaire.fields.forEach(field => {
                     resetFileCounters(userId, field.name);
                 });
+
                 const newQuestionnaire = new Questionnaire({
                     user: userId,
                     projectApplicationSector: req.body.projectApplicationSector || "Default Sector",
@@ -83,9 +102,14 @@ const createQuestionnaire = async (req, res) => {
                     approvalNote: req.body.approvalNote || null,
                 });
 
-
                 try {
-                    const result = await newQuestionnaire.save();
+                    const result = await newQuestionnaire.save().then(() => {
+                        sendCustomConfirmationEmail(
+                            user,
+                            "Submission Confirmation",
+                            "Thank You for contacting NIRDC. Your proposal has been received and directed to the relevant division. You can log back and check the progress of your application at any time. One of our staff members will contact you within 7 working days"
+                        );
+                    });
                     return res.status(201).json({
                         status: true,
                         message: 'Questionnaire created Successfully.',
@@ -124,8 +148,9 @@ const createQuestionnaire = async (req, res) => {
     }
 };
 
+
 const updateQuestionnaire = async (req, res) => {
-    const { id } = req.params;
+    const {id} = req.params;
 
     try {
         const uploadMiddleware = createUploadFields(uploadConfigs.questionnaire);
@@ -214,7 +239,7 @@ const updateQuestionnaire = async (req, res) => {
                     approvalNote: req.body.approvalNote || null,
                 };
 
-                const result = await Questionnaire.updateOne({ _id: id }, { $set: updatedFields });
+                const result = await Questionnaire.updateOne({_id: id}, {$set: updatedFields});
 
                 if (result.modifiedCount > 0) {
                     return res.status(200).json({
@@ -334,10 +359,10 @@ const getQuestionnaireByApprovalStatus = async (req, res) => {
     const skip = (page - 1) * limit;
 
     try {
-        const result = await Questionnaire.find({ approvalStatus: approvalStatus })
+        const result = await Questionnaire.find({approvalStatus: approvalStatus})
             .skip(skip)
             .limit(limit);
-        const totalCount = await Questionnaire.countDocuments({ approvalStatus: approvalStatus });
+        const totalCount = await Questionnaire.countDocuments({approvalStatus: approvalStatus});
         const totalPages = Math.ceil(totalCount / limit);
         if (!result || result.length === 0) {
             return res.status(200).json({
@@ -373,11 +398,11 @@ const getQuestionnairesByUser = async (req, res) => {
     const skip = (page - 1) * limit;
 
     try {
-        const result = await Questionnaire.find({ user: userId })
+        const result = await Questionnaire.find({user: userId})
             .skip(skip)
             .limit(limit);
 
-        const totalCount = await Questionnaire.countDocuments({ user: userId });
+        const totalCount = await Questionnaire.countDocuments({user: userId});
         const totalPages = Math.ceil(totalCount / limit);
 
         return res.status(200).json({
@@ -408,7 +433,7 @@ const getQuestionnairesByEmail = async (req, res) => {
     const skip = (page - 1) * limit;
 
     try {
-        const user = await User.findOne({ email: userEmail });
+        const user = await User.findOne({email: userEmail});
 
         if (!user) {
             return res.status(404).json({
@@ -417,11 +442,11 @@ const getQuestionnairesByEmail = async (req, res) => {
             });
         }
 
-        const result = await Questionnaire.find({ user: user._id })
+        const result = await Questionnaire.find({user: user._id})
             .skip(skip)
             .limit(limit);
 
-        const totalCount = await Questionnaire.countDocuments({ user: user._id });
+        const totalCount = await Questionnaire.countDocuments({user: user._id});
         const totalPages = Math.ceil(totalCount / limit);
 
         return res.status(200).json({
@@ -445,7 +470,7 @@ const getQuestionnairesByEmail = async (req, res) => {
 };
 
 const deleteQuestionnaire = async (req, res) => {
-    const { id } = req.params;
+    const {id} = req.params;
     try {
         const questionnaire = await Questionnaire.findById(id);
         if (!questionnaire) {
@@ -468,7 +493,7 @@ const deleteQuestionnaire = async (req, res) => {
             console.log('No files to delete.');
         }
 
-        const result = await Questionnaire.deleteOne({ _id: id });
+        const result = await Questionnaire.deleteOne({_id: id});
         if (result.deletedCount > 0) {
             res.status(200).json({
                 status: true,

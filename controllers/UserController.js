@@ -476,6 +476,33 @@ const createDirector = async (req, res) => {
     }
 };
 
+const getAllDirectors = async (req, res) => {
+    try {
+        const directors = await UserSchema.find({ role: USER_ENUMS.ROLES.DIRECTOR })
+            .select('_id firstName lastName designation institution mobile email country userName avatar activeState role');
+
+        if (!directors || directors.length === 0) {
+            return res.status(404).json({
+                status: false,
+                message: 'No directors found.',
+            });
+        }
+
+        return res.status(200).json({
+            status: true,
+            message: 'Directors retrieved successfully.',
+            data: directors,
+        });
+    } catch (error) {
+        console.error("Error retrieving directors:", error);
+        return res.status(500).json({
+            status: false,
+            message: 'Server error, please try again later.',
+            error: error.message,
+        });
+    }
+};
+
 const updateUser = (req, res) => {
     const userId = req.params.id;
     const updates = req.body;
@@ -628,6 +655,7 @@ module.exports = {
     verifyPhoneWithOtp,
     resendOTP,
     createDirector,
+    getAllDirectors,
     updateUser,
     updateUserRole,
     deleteUser
