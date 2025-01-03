@@ -161,6 +161,14 @@ const uploadConfigs = {
             {name: 'otherDocumentUrl', maxCount: 5}
         ]
     },
+    investmentQuestionnaire: {
+        uploadDir: 'investmentQuestionnaires',
+        allowedTypes: /pdf|doc|docx/,
+        maxFileSize: 10 * 1024 * 1024,
+        fields: [
+            {name: 'projectFile', maxCount: 5},
+        ]
+    },
     profile: {
         uploadDir: 'users',
         allowedTypes: /jpeg|jpg|png/,
@@ -177,6 +185,7 @@ const uploadConfigs = {
             {name: 'imageUrl', maxCount: 10},
         ]
     }
+
 };
 
 module.exports = {

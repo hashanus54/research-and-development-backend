@@ -9,6 +9,7 @@ const DB_CONNECTION_STRING = process.env.DB_CONNECTION_STRING;
 
 const UserRoute = require('./routes/UserRoute');
 const QuestionnaireRoute = require('./routes/QuestionnaireRoute');
+const InvestmentQuestionnaireRoute = require('./routes/InvestmentQuestionnaireRoute');
 const NewsRoute = require('./routes/NewsRoute');
 const UserController = require('./controllers/UserController');
 const { globalLimiter, authLimiter } = require('./utils/RateLimiterUtil');
@@ -43,6 +44,7 @@ mongoose.connect(DB_CONNECTION_STRING)
 app.use('/api/v1/users/sign-in', authLimiter);
 app.use('/api/v1/users', UserRoute);
 app.use('/api/v1/questionnaire', QuestionnaireRoute);
+app.use('/api/v1/investment-questionnaire', InvestmentQuestionnaireRoute);
 app.use('/api/v1/news', NewsRoute);
 
 module.exports = app;

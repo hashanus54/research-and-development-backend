@@ -153,29 +153,37 @@ const signUp = async (req, res) => {
         // Send OTP email
         await sendOTPEmail(newUser, emailOtp);
 
-        //if (requiresPhoneVerification) {
-        // SMS logic here (uncomment when needed)
-        // // SMS configuration
-        // const smsConfig = {
-        //     username: process.env.SMS_USERNAME,
-        //     password: process.env.SMS_PASSWORD
-        // };
+        // if (requiresPhoneVerification) {
+        //     const smsConfig = {
+        //         username: process.env.SMS_USERNAME,
+        //         password: process.env.SMS_PASSWORD,
+        //         customer: process.env.SMS_CUSTOMER // Optional
+        //     };
         //
-        // const client = await createSMSClient(smsConfig);
-        // const session = await createSession(client, smsConfig);
+        //     console.log('SMS Credentials:', {
+        //         username: smsConfig.username,
+        //         hasPassword: !!smsConfig.password,
+        //         customer: mobile
+        //     });
         //
-        // // SMS messages
-        // const welcomeMessage = `Welcome to ${process.env.APP_NAME || 'Your App'}, ${firstName}!`;
-        // const otpMessage = `Your OTP for account verification is: ${mobileOtp}. This code will expire in 10 minutes.`;
+        //     const client = await createSMSClient(smsConfig);
+        //     const session = await createSession(client, smsConfig);
         //
-        // await Promise.all([
-        //     sendMessage(client, session, process.env.SMS_SENDER_ALIAS, welcomeMessage, [mobile]),
-        //     sendMessage(client, session, process.env.SMS_SENDER_ALIAS, otpMessage, [mobile])
-        // ]);
+        //     const messages = [
+        //         `Welcome to ${process.env.APP_NAME || 'Your App'}, ${firstName}!`,
+        //         `Your OTP for account verification is: ${mobileOtp}. This code will expire in 10 minutes.`
+        //     ];
         //
-        // await closeSession(client, session);
+        //     try {
+        //         await Promise.all(
+        //             messages.map(msg =>
+        //                 sendMessage(client, session, process.env.SMS_SENDER_ALIAS, msg, [mobile])
+        //             )
+        //         );
+        //     } finally {
+        //         await closeSession(client, session);
+        //     }
         // }
-
 
         return res.status(201).json({
             status: true,
