@@ -451,7 +451,7 @@ const createDirector = async (req, res) => {
             mobile,
             email,
             country,
-            userName: firstName + lastName,
+            userName: firstName + " " + lastName,
             password: hashedPassword,
             confirmPassword: hashedPassword,
             avatar: "",
