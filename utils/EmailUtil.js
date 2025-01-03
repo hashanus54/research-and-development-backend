@@ -1,8 +1,18 @@
-const sgMail = require('@sendgrid/mail');
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+const nodemailer = require('nodemailer');
+
+// Configure Nodemailer SMTP transport
+const transporter = nodemailer.createTransport({
+    host: 'smtp.sendgrid.net', // SendGrid's SMTP server
+    port: 587, // Port for SMTP
+    auth: {
+        user: 'apikey', // Use 'apikey' as the username for SendGrid SMTP
+        pass: process.env.SENDGRID_API_KEY, // Your SendGrid API Key as the password
+    },
+});
+
 const appName = process.env.APPLICATION_NAME;
 
-
+// Function to send OTP Email
 const sendOTPEmail = async (user, otp) => {
     try {
         if (!user || !user.email) {
@@ -11,9 +21,10 @@ const sendOTPEmail = async (user, otp) => {
         if (!otp) {
             throw new Error('OTP is missing.');
         }
-        const msg = {
-            to: user.email,
-            from: process.env.SENDGRID_FROM_EMAIL,
+
+        const mailOptions = {
+            from: process.env.SENDGRID_FROM_EMAIL, // From email (e.g., no-reply@yourdomain.com)
+            to: user.email, // Recipient email
             subject: 'Account Verification',
             html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -32,7 +43,9 @@ const sendOTPEmail = async (user, otp) => {
                 </div>
             `
         };
-        await sgMail.send(msg);
+
+        // Send email using Nodemailer
+        await transporter.sendMail(mailOptions);
         console.log('OTP email sent successfully to:', user.email);
     } catch (error) {
         console.error('Error sending OTP email:', error.message);
@@ -40,11 +53,13 @@ const sendOTPEmail = async (user, otp) => {
     }
 };
 
+// Function to send Verification Email
 const sendVerificationEmail = async (user, verificationToken) => {
     const verificationURL = `${process.env.FRONTEND_URL}/verify-email/${encodeURIComponent(verificationToken)}`;
-    const msg = {
-        to: user.email,
+
+    const mailOptions = {
         from: process.env.SENDGRID_FROM_EMAIL,
+        to: user.email,
         subject: 'Email Verification',
         html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -64,14 +79,17 @@ const sendVerificationEmail = async (user, verificationToken) => {
             </div>
         `
     };
-    await sgMail.send(msg);
+
+    await transporter.sendMail(mailOptions);
 };
 
+// Function to send Password Reset Email
 const sendPasswordResetEmail = async (user, resetToken) => {
     const resetURL = `${process.env.FRONTEND_URL}/reset-password/${encodeURIComponent(resetToken)}`;
-    const msg = {
-        to: user.email,
+
+    const mailOptions = {
         from: process.env.SENDGRID_FROM_EMAIL,
+        to: user.email,
         subject: 'Password Reset Request',
         html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -91,13 +109,15 @@ const sendPasswordResetEmail = async (user, resetToken) => {
             </div>
         `
     };
-    await sgMail.send(msg);
+
+    await transporter.sendMail(mailOptions);
 };
 
+// Function to send Password Reset Confirmation Email
 const sendPasswordResetConfirmationEmail = async (user) => {
-    const msg = {
-        to: user.email,
+    const mailOptions = {
         from: process.env.SENDGRID_FROM_EMAIL,
+        to: user.email,
         subject: 'Password Reset Successful',
         html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -109,14 +129,17 @@ const sendPasswordResetConfirmationEmail = async (user) => {
             </div>
         `
     };
-    await sgMail.send(msg);
+
+    await transporter.sendMail(mailOptions);
 };
 
+// Function to resend Verification Email
 const resendVerificationEmailUtil = async (user, verificationToken) => {
     const verificationURL = `${process.env.FRONTEND_URL}/verify-email/${encodeURIComponent(verificationToken)}`;
-    const msg = {
-        to: user.email,
+
+    const mailOptions = {
         from: process.env.SENDGRID_FROM_EMAIL,
+        to: user.email,
         subject: 'Email Verification Request',
         html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -136,18 +159,20 @@ const resendVerificationEmailUtil = async (user, verificationToken) => {
             </div>
         `
     };
-    await sgMail.send(msg);
+
+    await transporter.sendMail(mailOptions);
 };
 
+// Function to send Custom Confirmation Email
 const sendCustomConfirmationEmail = async (
     user,
     type,
     title,
     message
 ) => {
-    const msg = {
-        to: user.email,
+    const mailOptions = {
         from: process.env.SENDGRID_FROM_EMAIL,
+        to: user.email,
         subject: `${type}`,
         html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -158,10 +183,9 @@ const sendCustomConfirmationEmail = async (
             </div>
         `
     };
-    console.log("Send");
-    await sgMail.send(msg);
-};
 
+    await transporter.sendMail(mailOptions);
+};
 
 module.exports = {
     sendOTPEmail,
